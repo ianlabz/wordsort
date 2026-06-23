@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>WORDSIFY - Word Sort</title>
+<title>WORDSORT — Organizador de Palavras</title>
 <link rel="icon" type="image/png" href="favicon.png">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
 <style>
@@ -498,6 +498,7 @@
   </div>
   <div class="btn-row" id="dup-btn-row" style="display:none;">
     <button class="btn btn-ghost" id="show-dup-btn" data-i18n="btnShowDup">Ver palavras duplicadas</button>
+    <button class="btn btn-ghost" id="show-filtered-btn" data-i18n="btnShowFiltered" style="display:none;">Ver palavras removidas pelo filtro</button>
   </div>
 
   <!-- RESULTADO -->
@@ -513,6 +514,11 @@
   <div class="section" id="dup-section" style="display:none;">
     <div class="section-label" data-i18n="secDupList">Palavras que apareciam mais de uma vez</div>
     <textarea id="dup-area" readonly></textarea>
+  </div>
+
+  <div class="section" id="filtered-section" style="display:none;">
+    <div class="section-label" data-i18n="secFilteredList">Palavras removidas pelo filtro</div>
+    <textarea id="filtered-area" readonly style="height:160px;"></textarea>
   </div>
 
 </div>
@@ -562,10 +568,12 @@
       statFiltered: 'Filtro (início/fim)',
       statCombo: 'Filtro combinado',
       btnShowDup: 'Ver palavras duplicadas',
+      btnShowFiltered: 'Ver palavras removidas pelo filtro',
       secResult: 'Resultado',
       btnDownload: '↓ Baixar .txt',
       btnCopy: 'Copiar',
       secDupList: 'Palavras que apareciam mais de uma vez',
+      secFilteredList: 'Palavras removidas pelo filtro',
       footerLeft: 'WORDSORT · Organizador local',
       footerMid: 'Processamento 100% no navegador · <b>Seus dados nunca saem do dispositivo</b>',
       footerCountSuffix: 'palavras',
@@ -604,10 +612,12 @@
       statFiltered: 'Filter (start/end)',
       statCombo: 'Combined filter',
       btnShowDup: 'View duplicate words',
+      btnShowFiltered: 'View words removed by filter',
       secResult: 'Result',
       btnDownload: '↓ Download .txt',
       btnCopy: 'Copy',
       secDupList: 'Words that appeared more than once',
+      secFilteredList: 'Words removed by filter',
       footerLeft: 'WORDSORT · Local organizer',
       footerMid: '100% in-browser processing · <b>Your data never leaves your device</b>',
       footerCountSuffix: 'words',
@@ -646,10 +656,12 @@
       statFiltered: 'Filtro (inicio/fin)',
       statCombo: 'Filtro combinado',
       btnShowDup: 'Ver palabras duplicadas',
+      btnShowFiltered: 'Ver palabras eliminadas por el filtro',
       secResult: 'Resultado',
       btnDownload: '↓ Descargar .txt',
       btnCopy: 'Copiar',
       secDupList: 'Palabras que aparecían más de una vez',
+      secFilteredList: 'Palabras eliminadas por el filtro',
       footerLeft: 'WORDSORT · Organizador local',
       footerMid: 'Procesamiento 100% en el navegador · <b>Tus datos nunca salen del dispositivo</b>',
       footerCountSuffix: 'palabras',
@@ -706,8 +718,11 @@
 
   const dupBtnRow = document.getElementById('dup-btn-row');
   const showDupBtn = document.getElementById('show-dup-btn');
+  const showFilteredBtn = document.getElementById('show-filtered-btn');
   const dupSection = document.getElementById('dup-section');
   const dupArea = document.getElementById('dup-area');
+  const filteredSection = document.getElementById('filtered-section');
+  const filteredArea = document.getElementById('filtered-area');
 
   const resultSection = document.getElementById('result-section');
   const resultArea = document.getElementById('result-area');
@@ -784,12 +799,13 @@
 
     if (dupInfo.size > 0) {
       dupBtnRow.style.display = 'flex';
+      showDupBtn.style.display = 'inline-block';
       const dupList = Array.from(dupInfo.entries())
         .sort((a, b) => a[0].localeCompare(b[0], 'pt-BR', { sensitivity: 'base' }))
         .map(([word, count]) => `${word} (${count}x)`);
       dupArea.value = dupList.join('\n');
     } else {
-      dupBtnRow.style.display = 'none';
+      showDupBtn.style.display = 'none';
       dupSection.style.display = 'none';
     }
 
@@ -810,6 +826,7 @@
     const caseInsensitive = ignoreCase.checked;
 
     let filteredCount = 0;
+    const filteredWords = [];
     let words = allUniqueWords;
 
     if (suffixes.length || prefixes.length) {
@@ -824,7 +841,7 @@
           return test.startsWith(p);
         });
         const remove = matchesSuffix || matchesPrefix;
-        if (remove) filteredCount++;
+        if (remove) { filteredCount++; filteredWords.push(w); }
         return !remove;
       });
     }
@@ -843,11 +860,24 @@
           const e = caseInsensitive ? end.toLocaleLowerCase('pt-BR') : end;
           return test.startsWith(s) && test.endsWith(e);
         });
-        if (matches) comboCount++;
+        if (matches) { comboCount++; filteredWords.push(w); }
         return !matches;
       });
     }
     statCombo.textContent = comboCount.toLocaleString('pt-BR');
+
+    // atualiza painel de removidas pelo filtro
+    if (filteredWords.length > 0) {
+      filteredWords.sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }));
+      filteredArea.value = filteredWords.join('\n');
+      showFilteredBtn.style.display = 'inline-block';
+      dupBtnRow.style.display = 'flex';
+    } else {
+      showFilteredBtn.style.display = 'none';
+      filteredSection.style.display = 'none';
+      // só esconde o row se também não tiver duplicadas visíveis
+      if (showDupBtn.style.display === 'none') dupBtnRow.style.display = 'none';
+    }
 
     lastUniqueWords = words;
     updateFooterCount();
@@ -891,6 +921,10 @@
 
   showDupBtn.addEventListener('click', () => {
     dupSection.style.display = dupSection.style.display === 'none' ? 'block' : 'none';
+  });
+
+  showFilteredBtn.addEventListener('click', () => {
+    filteredSection.style.display = filteredSection.style.display === 'none' ? 'block' : 'none';
   });
 
   downloadBtn.addEventListener('click', () => {
