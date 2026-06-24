@@ -420,10 +420,10 @@
       <div class="corner bl"></div>
       <div class="corner br"></div>
       <span class="drop-icon">📄</span>
-      <div class="drop-title" data-i18n="dropTitle">Arraste o arquivo .txt aqui</div>
-      <div class="drop-sub" data-i18n="dropSub">ou clique para selecionar · uma palavra por linha · suporta dezenas de milhares</div>
+      <div class="drop-title" data-i18n="dropTitle">Arraste um ou mais arquivos .txt aqui</div>
+      <div class="drop-sub" data-i18n="dropSub">ou clique para selecionar · múltiplos arquivos · palavras combinadas e organizadas</div>
     </div>
-    <input type="file" id="file-input" accept=".txt" />
+    <input type="file" id="file-input" accept=".txt" multiple />
     <div class="filename" id="file-name"></div>
 
     <div class="hint" style="margin-top:18px;" data-i18n="pasteHint">Ou cole o texto diretamente — funciona tanto "uma por linha" quanto "palavra, palavra, palavra"</div>
@@ -538,8 +538,8 @@
       introSub: 'Organizador de Listas de Palavras',
       headerBadge: '100% Local · Sem Limite',
       secInput: 'Entrada',
-      dropTitle: 'Arraste o arquivo .txt aqui',
-      dropSub: 'ou clique para selecionar · uma palavra por linha · suporta dezenas de milhares',
+      dropTitle: 'Arraste um ou mais arquivos .txt aqui',
+      dropSub: 'ou clique para selecionar · múltiplos arquivos · palavras combinadas e organizadas',
       pasteHint: 'Ou cole o texto diretamente — funciona tanto "uma por linha" quanto "palavra, palavra, palavra"',
       pastePlaceholder: 'Cole aqui sua lista...',
       useTextBtn: '▶ Processar texto colado',
@@ -582,8 +582,8 @@
       introSub: 'Word List Organizer',
       headerBadge: '100% Local · No Limit',
       secInput: 'Input',
-      dropTitle: 'Drag your .txt file here',
-      dropSub: 'or click to select · one word per line · supports tens of thousands',
+      dropTitle: 'Drag one or more .txt files here',
+      dropSub: 'or click to select · multiple files · words combined and sorted',
       pasteHint: 'Or paste text directly — works with "one per line" or "word, word, word"',
       pastePlaceholder: 'Paste your list here...',
       useTextBtn: '▶ Process pasted text',
@@ -626,8 +626,8 @@
       introSub: 'Organizador de Listas de Palabras',
       headerBadge: '100% Local · Sin Límite',
       secInput: 'Entrada',
-      dropTitle: 'Arrastra el archivo .txt aquí',
-      dropSub: 'o haz clic para seleccionar · una palabra por línea · admite decenas de miles',
+      dropTitle: 'Arrastra uno o más archivos .txt aquí',
+      dropSub: 'o haz clic para seleccionar · múltiples archivos · palabras combinadas y organizadas',
       pasteHint: 'O pega el texto directamente — funciona tanto "una por línea" como "palabra, palabra, palabra"',
       pastePlaceholder: 'Pega aquí tu lista...',
       useTextBtn: '▶ Procesar texto pegado',
@@ -742,18 +742,40 @@
   dropZone.addEventListener('drop', e => {
     e.preventDefault();
     dropZone.classList.remove('dragover');
-    if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+    if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
   });
   fileInput.addEventListener('change', () => {
-    if (fileInput.files.length) handleFile(fileInput.files[0]);
+    if (fileInput.files.length) handleFiles(fileInput.files);
     fileInput.value = '';
   });
 
-  function handleFile(file) {
-    fileName.textContent = `Arquivo: ${file.name} (${(file.size/1024).toFixed(1)} KB)`;
-    const reader = new FileReader();
-    reader.onload = e => { lastRawText = e.target.result; process(); };
-    reader.readAsText(file, 'UTF-8');
+  function handleFiles(files) {
+    const fileArray = Array.from(files).filter(f => f.name.endsWith('.txt'));
+    if (!fileArray.length) return;
+
+    const totalSize = fileArray.reduce((acc, f) => acc + f.size, 0);
+    if (fileArray.length === 1) {
+      fileName.textContent = `Arquivo: ${fileArray[0].name} (${(totalSize/1024).toFixed(1)} KB)`;
+    } else {
+      const names = fileArray.map(f => f.name).join(', ');
+      fileName.textContent = `${fileArray.length} arquivos: ${names} — total: ${(totalSize/1024).toFixed(1)} KB`;
+    }
+
+    let loaded = 0;
+    const texts = new Array(fileArray.length);
+
+    fileArray.forEach((file, i) => {
+      const reader = new FileReader();
+      reader.onload = e => {
+        texts[i] = e.target.result;
+        loaded++;
+        if (loaded === fileArray.length) {
+          lastRawText = texts.join('\n');
+          process();
+        }
+      };
+      reader.readAsText(file, 'UTF-8');
+    });
   }
 
   useTextBtn.addEventListener('click', () => {
